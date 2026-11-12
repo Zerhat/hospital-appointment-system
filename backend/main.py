@@ -1,5 +1,8 @@
+import hashlib
+import os
 from datetime import date as date_type, time as time_type, datetime, timedelta
 from fastapi import FastAPI, Depends, HTTPException
+from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 from sqlalchemy.orm import Session
 from sqlalchemy.exc import IntegrityError
@@ -20,6 +23,22 @@ class AppointmentCreate(BaseModel):
     doctor_id: int
     date: date_type   # örn. "2026-11-16"
     time: time_type   # örn. "09:30"
+
+
+class LoginRequest(BaseModel):
+    email: str
+    password: str
+
+
+class RegisterRequest(BaseModel):
+    full_name: str
+    email: str
+    password: str
+
+
+def hash_password(password: str) -> str:
+    # Şimdilik SHA-256; finalde bcrypt'e geçilecek
+    return hashlib.sha256(password.encode()).hexdigest()
 
 
 # ---------- Yardımcı fonksiyonlar (randevu algoritması) ----------
@@ -55,6 +74,26 @@ def get_booked_slots(db: Session, doctor_id: int, day: date_type):
 @app.get("/")
 def home():
     return {"message": "Hospital Appointment System çalışıyor!"}
+
+
+@app.post("/register", status_code=201)
+def register(data: RegisterRequest, db: Session = Depends(get_db)):
+    if db.query(models.Patient).filter_by(email=data.email).first():
+        raise HTTPException(409, "Bu e-posta ile kayıtlı bir hesap zaten var")
+    patient = models.Patient(full_name=data.full_name, email=data.email,
+                             password_hash=hash_password(data.password))
+    db.add(patient)
+    db.commit()
+    db.refresh(patient)
+    return {"id": patient.id, "full_name": patient.full_name}
+
+
+@app.post("/login")
+def login(data: LoginRequest, db: Session = Depends(get_db)):
+    patient = db.query(models.Patient).filter_by(email=data.email).first()
+    if not patient or patient.password_hash != hash_password(data.password):
+        raise HTTPException(401, "E-posta veya şifre hatalı")
+    return {"id": patient.id, "full_name": patient.full_name}
 
 
 @app.get("/branches")
@@ -151,3 +190,9 @@ def cancel_appointment(appointment_id: int, db: Session = Depends(get_db)):
     appointment.status = "cancelled"
     db.commit()
     return {"id": appointment.id, "status": appointment.status}
+
+
+# ---------- Frontend ----------
+# frontend klasöründeki HTML/CSS/JS dosyaları http://127.0.0.1:8000/app adresinden sunulur
+FRONTEND_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "frontend")
+app.mount("/app", StaticFiles(directory=FRONTEND_DIR, html=True), name="frontend")
