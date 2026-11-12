@@ -1,0 +1,258 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>HAS · Hospital Appointment System</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+<!--
+  Çok dilli yapı:
+  data-i18n="anahtar"          -> elemanın metni app.js içindeki I18N sözlüğünden gelir
+  data-i18n-html="anahtar"     -> metin HTML içerir (<br>, <b>)
+  data-i18n-ph="anahtar"       -> input placeholder'ı
+  data-i18n-title="anahtar"    -> title / aria-label
+-->
+
+<!-- =============== GİRİŞ / KAYIT =============== -->
+<div id="authView" class="auth-page">
+  <div class="auth-shell">
+    <!-- Sol: tanıtım paneli -->
+    <aside class="auth-side">
+      <div class="logo logo-light">
+        <span class="logo-mark" data-icon="logo"></span>
+        <span class="logo-text"><b>HAS</b><small data-i18n="brandSub"></small></span>
+      </div>
+      <h2 data-i18n-html="heroTitle"></h2>
+      <ul class="feature-list">
+        <li><span data-icon="pin"></span><p data-i18n="feat1"></p></li>
+        <li><span data-icon="shield"></span><p data-i18n="feat2"></p></li>
+        <li><span data-icon="spark"></span><p data-i18n="feat3"></p></li>
+      </ul>
+      <p class="auth-side-note" data-i18n="footNote"></p>
+    </aside>
+
+    <!-- Sağ: form -->
+    <main class="auth-card">
+      <div class="auth-card-top">
+        <div class="logo logo-dark mobile-only">
+          <span class="logo-mark" data-icon="logo"></span>
+          <span class="logo-text"><b>HAS</b><small data-i18n="brandSub"></small></span>
+        </div>
+        <div class="lang-switch">
+          <span class="lang-globe" data-icon="globe"></span>
+          <button data-lang="tr">TR</button><button data-lang="en">EN</button>
+        </div>
+      </div>
+
+      <!-- Giriş formu -->
+      <form id="loginForm" class="auth-form">
+        <h1 data-i18n="loginTitle"></h1>
+        <p class="muted" data-i18n="loginSub"></p>
+
+        <div class="field">
+          <span class="field-icon" data-icon="mail"></span>
+          <input type="email" id="loginEmail" data-i18n-ph="emailPh" autocomplete="username" required>
+        </div>
+        <div class="field">
+          <span class="field-icon" data-icon="lock"></span>
+          <input type="password" id="loginPassword" data-i18n-ph="passwordPh" autocomplete="current-password" required>
+          <button type="button" class="field-toggle" data-toggle="loginPassword" data-i18n-title="showPassword" data-icon="eye"></button>
+        </div>
+
+        <button type="submit" class="btn btn-green btn-block" data-i18n="loginBtn"></button>
+        <div class="divider"><span data-i18n="or"></span></div>
+        <button type="button" class="btn btn-blue btn-block" data-switch="register">
+          <span data-icon="user"></span><span data-i18n="registerLink"></span>
+        </button>
+        <p class="hint" data-i18n-html="demoHint"></p>
+      </form>
+
+      <!-- Kayıt formu -->
+      <form id="registerForm" class="auth-form hidden">
+        <h1 data-i18n="regTitle"></h1>
+        <p class="muted" data-i18n="regSub"></p>
+
+        <div class="field">
+          <span class="field-icon" data-icon="user"></span>
+          <input type="text" id="regName" data-i18n-ph="fullNamePh" required>
+        </div>
+        <div class="field">
+          <span class="field-icon" data-icon="mail"></span>
+          <input type="email" id="regEmail" data-i18n-ph="emailPh" required>
+        </div>
+        <div class="field">
+          <span class="field-icon" data-icon="lock"></span>
+          <input type="password" id="regPassword" data-i18n-ph="regPasswordPh" minlength="6" required>
+          <button type="button" class="field-toggle" data-toggle="regPassword" data-i18n-title="showPassword" data-icon="eye"></button>
+        </div>
+
+        <button type="submit" class="btn btn-blue btn-block" data-i18n="regBtn"></button>
+        <button type="button" class="btn btn-link btn-block" data-switch="login" data-i18n="haveAccount"></button>
+      </form>
+
+      <p id="authMsg" class="form-msg"></p>
+    </main>
+  </div>
+</div>
+
+<!-- =============== UYGULAMA =============== -->
+<div id="appView" class="hidden">
+
+  <header class="topbar">
+    <div class="topbar-inner">
+      <div class="logo logo-dark">
+        <span class="logo-mark" data-icon="logo"></span>
+        <span class="logo-text"><b>HAS</b><small data-i18n="brandSub"></small></span>
+      </div>
+      <nav class="nav">
+        <button class="nav-link active" data-page="homePage" data-i18n="navHome"></button>
+        <button class="nav-link" data-page="bookPage" data-i18n="navBook"></button>
+        <button class="nav-link" data-page="myPage" data-i18n="navMy"></button>
+      </nav>
+      <div class="user-chip">
+        <div class="lang-switch">
+          <span class="lang-globe" data-icon="globe"></span>
+          <button data-lang="tr">TR</button><button data-lang="en">EN</button>
+        </div>
+        <span class="avatar" id="userAvatar"></span>
+        <span class="user-name" id="userName"></span>
+        <button class="icon-btn" id="logoutBtn" data-i18n-title="logout" data-icon="logout"></button>
+      </div>
+    </div>
+  </header>
+
+  <!-- ---------- ANA SAYFA ---------- -->
+  <main id="homePage" class="page">
+    <section class="hero">
+      <p class="eyebrow" data-i18n="welcome"></p>
+      <h1 id="greeting"></h1>
+      <p class="muted" data-i18n="whatToDo"></p>
+    </section>
+
+    <section class="action-grid">
+      <button class="action-card green" data-page="bookPage">
+        <span class="action-icon" data-icon="hospital"></span>
+        <b data-i18n="cardBookTitle"></b>
+        <small data-i18n="cardBookSub"></small>
+      </button>
+      <button class="action-card blue" data-page="myPage">
+        <span class="action-icon" data-icon="calendar"></span>
+        <b data-i18n="navMy"></b>
+        <small data-i18n="cardMySub"></small>
+      </button>
+      <div class="action-card purple disabled">
+        <span class="action-icon" data-icon="spark"></span>
+        <b><span data-i18n="cardTriage"></span> <em data-i18n="soon"></em></b>
+        <small data-i18n="cardTriageSub"></small>
+      </div>
+    </section>
+
+    <section class="panel">
+      <div class="panel-head"><h2 data-i18n="upcomingTitle"></h2></div>
+      <div id="nextAppointment"></div>
+    </section>
+  </main>
+
+  <!-- ---------- RANDEVU AL ---------- -->
+  <main id="bookPage" class="page hidden">
+
+    <ol class="stepper" id="stepper">
+      <li data-step="1" class="active"><span>1</span><p data-i18n="step1"></p></li>
+      <li data-step="2"><span>2</span><p data-i18n="step2"></p></li>
+      <li data-step="3"><span>3</span><p data-i18n="step3"></p></li>
+      <li data-step="4"><span>4</span><p data-i18n="step4"></p></li>
+    </ol>
+
+    <!-- Adım 1: Arama kriterleri -->
+    <section class="panel" id="step1">
+      <div class="panel-head">
+        <h2 data-i18n="searchTitle"></h2>
+        <p class="muted" data-i18n="searchSub"></p>
+      </div>
+      <div class="filter-grid">
+        <label class="select-field">
+          <span data-i18n="cityLabel"></span>
+          <select id="citySelect"><option value=""></option></select>
+        </label>
+        <label class="select-field">
+          <span data-i18n="districtLabel"></span>
+          <select id="districtSelect" disabled><option value=""></option></select>
+        </label>
+        <label class="select-field">
+          <span data-i18n="clinicLabel"></span>
+          <select id="branchSelect" disabled><option value=""></option></select>
+        </label>
+        <label class="select-field">
+          <span data-i18n="hospitalLabel"></span>
+          <select id="hospitalSelect" disabled><option value=""></option></select>
+        </label>
+        <label class="select-field">
+          <span data-i18n="doctorLabel"></span>
+          <select id="doctorSelect" disabled><option value=""></option></select>
+        </label>
+        <div class="filter-actions">
+          <button class="btn btn-ghost" id="clearBtn" type="button" data-i18n="clear"></button>
+          <button class="btn btn-green" id="searchBtn" type="button" disabled>
+            <span data-icon="search"></span><span data-i18n="search"></span>
+          </button>
+        </div>
+      </div>
+    </section>
+
+    <!-- Adım 2: Hekim sonuçları -->
+    <section class="panel hidden" id="step2">
+      <div class="panel-head row">
+        <div>
+          <h2 data-i18n="resultsTitle"></h2>
+          <p class="muted" id="resultInfo"></p>
+        </div>
+        <button class="btn btn-ghost" data-back="1" type="button" data-i18n="changeSearch"></button>
+      </div>
+      <div id="doctorList" class="doctor-list"></div>
+    </section>
+
+    <!-- Adım 3: Gün ve saat -->
+    <section class="panel hidden" id="step3">
+      <div class="panel-head row">
+        <div id="selectedDoctorCard"></div>
+        <button class="btn btn-ghost" data-back="2" type="button" data-i18n="changeDoctor"></button>
+      </div>
+
+      <h3 class="section-title" data-i18n="pickDay"></h3>
+      <div id="dayStrip" class="day-strip"></div>
+
+      <div id="slotArea" class="slot-area"></div>
+    </section>
+  </main>
+
+  <!-- ---------- RANDEVULARIM ---------- -->
+  <main id="myPage" class="page hidden">
+    <section class="panel">
+      <div class="panel-head row">
+        <h2 data-i18n="navMy"></h2>
+        <div class="seg" id="mySeg">
+          <button class="seg-btn active" data-filter="active" data-i18n="tabActive"></button>
+          <button class="seg-btn" data-filter="past" data-i18n="tabPast"></button>
+        </div>
+      </div>
+      <div id="myList" class="appt-list"></div>
+    </section>
+  </main>
+</div>
+
+<!-- =============== MODAL & BİLDİRİM =============== -->
+<div id="modal" class="modal hidden" role="dialog" aria-modal="true">
+  <div class="modal-box">
+    <div id="modalBody"></div>
+    <div class="modal-actions" id="modalActions"></div>
+  </div>
+</div>
+<div id="toast" class="toast hidden"></div>
+
+<script src="app.js"></script>
+</body>
+</html>
