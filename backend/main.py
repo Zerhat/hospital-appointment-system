@@ -11,6 +11,7 @@ from sqlalchemy.exc import IntegrityError
 
 from database import engine, Base, get_db
 import models
+from triage import triage as run_triage
 
 Base.metadata.create_all(bind=engine)
 
@@ -325,7 +326,38 @@ def cancel_appointment(appointment_id: int, db: Session = Depends(get_db)):
     return {"id": appointment.id, "status": appointment.status}
 
 
+# ---------- LLM ön triyaj ----------
+class TriageRequest(BaseModel):
+    text: str
+    lang: str = "tr"
+
+
+@app.post("/triage")
+def triage_endpoint(data: TriageRequest, db: Session = Depends(get_db)):
+    """Şikâyet metninden uygun kliniği önerir (teşhis koymaz)."""
+    text = data.text.strip()
+    if len(text) < 3:
+        raise HTTPException(400, "Lütfen şikâyetinizi biraz daha ayrıntılı yazın")
+    if len(text) > 1000:
+        raise HTTPException(400, "Şikâyet metni en fazla 1000 karakter olabilir")
+
+    branches = {b.name: b.id for b in db.query(models.Branch).all()}
+    result = run_triage(text, list(branches), data.lang)
+    result["branch_id"] = branches.get(result["branch"])
+    result["alternatives"] = [{"id": branches[b], "name": b} for b in result["alternatives"]]
+    return result
+
+
 # ---------- Frontend ----------
+@app.middleware("http")
+async def no_cache_frontend(request, call_next):
+    """Tarayıcı frontend dosyalarını her seferinde sunucuya sorsun (eski app.js takılı kalmasın)."""
+    response = await call_next(request)
+    if request.url.path.startswith("/app"):
+        response.headers["Cache-Control"] = "no-cache"
+    return response
+
+
 # frontend klasöründeki HTML/CSS/JS dosyaları http://127.0.0.1:8000/app adresinden sunulur
 FRONTEND_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "frontend")
 app.mount("/app", StaticFiles(directory=FRONTEND_DIR, html=True), name="frontend")

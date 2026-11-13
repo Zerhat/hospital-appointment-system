@@ -84,6 +84,26 @@ const I18N = {
     cancelYes: "İptal Et",
     cancelledToast: "Randevunuz iptal edildi",
     genericError: "İşlem başarısız oldu",
+    navTriage: "Ön Triyaj",
+    aiTag: "Yapay Zekâ",
+    triageSub: "Şikâyetinizi kendi cümlelerinizle yazın; size uygun polikliniği önerelim.",
+    triagePh: "Örn: 3 gündür boğazım ağrıyor, yutkunurken zorlanıyorum ve hafif ateşim var.",
+    examples: ["Boğazım ağrıyor ve ateşim var", "Dizimi burktum, şişti", "Kollarımda kaşıntılı kızarıklık var"],
+    disclaimer: "Bu asistan teşhis koymaz ve ilaç önermez; yalnızca hangi kliniğe başvurabileceğinizi önerir. Acil durumlarda 112'yi arayın.",
+    analyze: "Klinik Öner",
+    analyzing: "Analiz ediliyor…",
+    resultLabel: "Önerilen klinik",
+    urgency_routine: "Normal randevu yeterli",
+    urgency_urgent: "1-2 gün içinde muayene önerilir",
+    emergencyTitle: "Acil durum olabilir",
+    lUrgency: "Aciliyet",
+    call112: "112'yi Ara",
+    bookThis: "Bu klinikten randevu al",
+    alsoConsider: "Diğer seçenekler:",
+    source_llm: "Yapay zekâ ({provider}) tarafından önerildi",
+    source_rules: "Kural tabanlı yedek mod ile önerildi",
+    "source_safety-rules": "Güvenlik kuralı ile tespit edildi",
+    hintBranch: "Önerilen klinik: <b>{branch}</b>. İl seçtiğinizde otomatik olarak seçilecek.",
     months: ["Ocak", "Şubat", "Mart", "Nisan", "Mayıs", "Haziran", "Temmuz", "Ağustos", "Eylül", "Ekim", "Kasım", "Aralık"],
     days: ["Pazar", "Pazartesi", "Salı", "Çarşamba", "Perşembe", "Cuma", "Cumartesi"],
     daysShort: ["Paz", "Pzt", "Sal", "Çar", "Per", "Cum", "Cmt"],
@@ -165,6 +185,26 @@ const I18N = {
     cancelYes: "Cancel Appointment",
     cancelledToast: "Your appointment has been cancelled",
     genericError: "Operation failed",
+    navTriage: "Pre-Triage",
+    aiTag: "AI",
+    triageSub: "Describe your complaint in your own words and we will suggest a suitable clinic.",
+    triagePh: "e.g. My throat has been sore for 3 days, it hurts to swallow and I have a mild fever.",
+    examples: ["I have a sore throat and fever", "I twisted my knee and it is swollen", "Itchy red rash on my arms"],
+    disclaimer: "This assistant does not diagnose or recommend medication; it only suggests which clinic to visit. In an emergency, call 112.",
+    analyze: "Suggest a Clinic",
+    analyzing: "Analyzing…",
+    resultLabel: "Suggested clinic",
+    urgency_routine: "A regular appointment is fine",
+    urgency_urgent: "See a doctor within 1-2 days",
+    emergencyTitle: "This may be an emergency",
+    lUrgency: "Urgency",
+    call112: "Call 112",
+    bookThis: "Book in this clinic",
+    alsoConsider: "Also consider:",
+    source_llm: "Suggested by AI ({provider})",
+    source_rules: "Suggested by rule-based fallback",
+    "source_safety-rules": "Detected by safety rules",
+    hintBranch: "Suggested clinic: <b>{branch}</b>. It will be selected automatically when you choose a province.",
     months: ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"],
     days: ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"],
     daysShort: ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"],
@@ -212,6 +252,8 @@ const ERROR_EN = {
   "Geçmiş bir tarihe randevu alınamaz": "Appointments cannot be made for a past date",
   "Seçilen saat doktorun çalışma saatleri dışında": "The selected time is outside the doctor's working hours",
   "En fazla 14 gün sonrasına randevu alınabilir": "Appointments can be made at most 14 days in advance",
+  "Lütfen şikâyetinizi biraz daha ayrıntılı yazın": "Please describe your complaint in a bit more detail",
+  "Şikâyet metni en fazla 1000 karakter olabilir": "The complaint can be at most 1000 characters",
 };
 
 let lang = "en";
@@ -425,11 +467,12 @@ function enterApp() {
 let currentPage = "homePage";
 function showPage(id) {
   currentPage = id;
-  ["homePage", "bookPage", "myPage"].forEach((p) => $(p).classList.toggle("hidden", p !== id));
+  ["homePage", "bookPage", "myPage", "triagePage"].forEach((p) => $(p).classList.toggle("hidden", p !== id));
   document.querySelectorAll(".nav-link").forEach((n) => n.classList.toggle("active", n.dataset.page === id));
   window.scrollTo({ top: 0 });
   if (id === "homePage") loadNextAppointment();
   if (id === "myPage") loadMyAppointments();
+  if (id === "triagePage") renderExamples();
 }
 document.querySelectorAll("[data-page]").forEach((b) => b.addEventListener("click", () => showPage(b.dataset.page)));
 
@@ -437,6 +480,8 @@ document.querySelectorAll("[data-page]").forEach((b) => b.addEventListener("clic
 function refreshDynamicTexts() {
   $("greeting").textContent = t("greeting", { name: patient.full_name.split(" ")[0] });
   relabelSelects();
+  renderBranchHint();
+  if (currentPage === "triagePage") { renderExamples(); if (lastTriage) renderTriageResult(lastTriage); }
   if (currentPage === "homePage") loadNextAppointment();
   if (currentPage === "myPage") loadMyAppointments();
   if (currentPage === "bookPage") {
@@ -550,6 +595,13 @@ async function loadBranches() {
   fillSelect($("branchSelect"), branches, "selectClinic", (x) => x.name, true);
   $("branchSelect").disabled = false;
   if (branches.some((b) => String(b.id) === keep)) $("branchSelect").value = keep;
+  // Ön triyajdan gelen klinik önerisi varsa otomatik seç
+  if (pendingBranch && branches.some((b) => b.id === pendingBranch.id)) {
+    $("branchSelect").value = String(pendingBranch.id);
+    pendingBranch = null;
+    renderBranchHint();
+    await loadHospitals();
+  }
 }
 
 async function loadHospitals() {
@@ -599,7 +651,7 @@ $("hospitalSelect").addEventListener("change", async () => {
   $("doctorSelect").disabled = false;
 });
 
-$("clearBtn").addEventListener("click", resetSearchForm);
+$("clearBtn").addEventListener("click", () => { pendingBranch = null; renderBranchHint(); resetSearchForm(); });
 
 $("searchBtn").addEventListener("click", async () => {
   $("searchBtn").disabled = true;
@@ -759,6 +811,109 @@ async function book(time) {
     toast(err.message, "error");
     loadDays();
   }
+}
+
+// =========================================================
+// 7b) ÖN TRİYAJ (LLM)
+// =========================================================
+let pendingBranch = null;   // {id, name}: triyajdan randevu sayfasına taşınan klinik
+let lastTriage = null;
+
+function renderBranchHint() {
+  const el = $("branchHint");
+  if (!pendingBranch) return el.classList.add("hidden");
+  el.innerHTML = `<span data-icon="spark"></span><span>${t("hintBranch", { branch: esc(trBranch(pendingBranch.name)) })}</span>
+                  <button type="button" aria-label="close">×</button>`;
+  el.classList.remove("hidden");
+  hydrateIcons(el);
+  el.querySelector("button").addEventListener("click", () => { pendingBranch = null; renderBranchHint(); });
+}
+
+function renderExamples() {
+  $("triageExamples").innerHTML = t("examples")
+    .map((x) => `<button type="button" class="chip">${esc(x)}</button>`).join("");
+  $("triageExamples").querySelectorAll(".chip").forEach((c) => c.addEventListener("click", () => {
+    $("triageText").value = c.textContent;
+    $("charCount").textContent = `${c.textContent.length} / 1000`;
+  }));
+}
+
+$("triageText").addEventListener("input", () => {
+  $("charCount").textContent = `${$("triageText").value.length} / 1000`;
+});
+
+$("triageBtn").addEventListener("click", async () => {
+  const text = $("triageText").value.trim();
+  const btn = $("triageBtn");
+  btn.disabled = true;
+  btn.querySelector("svg").outerHTML = `<span class="spinner"></span>`;
+  $("triageBtnText").textContent = t("analyzing");
+  try {
+    lastTriage = await api("/triage", { method: "POST", body: JSON.stringify({ text, lang }) });
+    renderTriageResult(lastTriage);
+  } catch (err) {
+    toast(err.message, "error");
+  } finally {
+    btn.disabled = false;
+    const sp = btn.querySelector(".spinner");
+    if (sp) sp.outerHTML = ICONS.spark;
+    $("triageBtnText").textContent = t("analyze");
+  }
+});
+
+function goBookWithBranch(id, name) {
+  pendingBranch = { id, name };
+  renderBranchHint();
+  setStep(1);
+  showPage("bookPage");
+  if ($("citySelect").value) loadBranches().then(updateSearchButton);
+}
+
+function renderTriageResult(r) {
+  const box = $("triageResult");
+  const source = `<span class="source-tag">${t("source_" + r.source, { provider: r.provider || "LLM" })}</span>`;
+  if (r.urgency === "emergency") {
+    box.innerHTML = `
+      <div class="result-card emergency">
+        <div class="result-top">
+          <div class="result-icon red" data-icon="alert"></div>
+          <div><div class="result-label">${t("lUrgency")}</div><div class="result-branch">${t("emergencyTitle")}</div></div>
+        </div>
+        <p class="result-reason">${esc(r.reason)}</p>
+        <div class="result-actions">
+          <a class="call-112" href="tel:112">📞 ${t("call112")}</a>
+          ${source}
+        </div>
+      </div>`;
+  } else {
+    const urgencyBadge = r.urgency === "urgent"
+      ? `<span class="badge amber">${t("urgency_urgent")}</span>`
+      : `<span class="badge green">${t("urgency_routine")}</span>`;
+    const alts = r.alternatives.length ? `
+      <div class="alt-row"><span class="muted">${t("alsoConsider")}</span>
+        ${r.alternatives.map((a) => `<button class="chip" data-alt="${a.id}" data-name="${esc(a.name)}">${esc(trBranch(a.name))}</button>`).join("")}
+      </div>` : "";
+    box.innerHTML = `
+      <div class="result-card">
+        <div class="result-top">
+          <div class="result-icon purple" data-icon="steth"></div>
+          <div><div class="result-label">${t("resultLabel")}</div><div class="result-branch">${esc(trBranch(r.branch))}</div></div>
+        </div>
+        <p class="result-reason">${esc(r.reason)}</p>
+        <div class="result-meta">${urgencyBadge}</div>
+        ${alts}
+        <div class="result-actions">
+          <button class="btn btn-green" id="bookSuggested"><span data-icon="calendar"></span>${t("bookThis")}</button>
+          ${source}
+        </div>
+      </div>`;
+    box.querySelector("#bookSuggested").addEventListener("click", () => goBookWithBranch(r.branch_id, r.branch));
+    box.querySelectorAll("[data-alt]").forEach((c) =>
+      c.addEventListener("click", () => goBookWithBranch(Number(c.dataset.alt), c.dataset.name)));
+  }
+  box.classList.remove("hidden");
+  hydrateIcons(box);
+  box.scrollIntoView({ behavior: "smooth", block: "nearest" });
 }
 
 // =========================================================

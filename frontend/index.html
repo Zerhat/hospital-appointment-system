@@ -6,7 +6,7 @@
   <title>HAS · Hospital Appointment System</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700;800&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="style.css">
+  <link rel="stylesheet" href="style.css?v=2">
 </head>
 <body>
 <!--
@@ -112,6 +112,7 @@
         <button class="nav-link active" data-page="homePage" data-i18n="navHome"></button>
         <button class="nav-link" data-page="bookPage" data-i18n="navBook"></button>
         <button class="nav-link" data-page="myPage" data-i18n="navMy"></button>
+        <button class="nav-link" data-page="triagePage" data-i18n="navTriage"></button>
       </nav>
       <div class="user-chip">
         <div class="lang-switch">
@@ -144,11 +145,11 @@
         <b data-i18n="navMy"></b>
         <small data-i18n="cardMySub"></small>
       </button>
-      <div class="action-card purple disabled">
+      <button class="action-card purple" data-page="triagePage">
         <span class="action-icon" data-icon="spark"></span>
-        <b><span data-i18n="cardTriage"></span> <em data-i18n="soon"></em></b>
+        <b><span data-i18n="cardTriage"></span> <em data-i18n="aiTag"></em></b>
         <small data-i18n="cardTriageSub"></small>
-      </div>
+      </button>
     </section>
 
     <section class="panel">
@@ -173,6 +174,7 @@
         <h2 data-i18n="searchTitle"></h2>
         <p class="muted" data-i18n="searchSub"></p>
       </div>
+      <div id="branchHint" class="hint-banner hidden"></div>
       <div class="filter-grid">
         <label class="select-field">
           <span data-i18n="cityLabel"></span>
@@ -229,6 +231,31 @@
     </section>
   </main>
 
+  <!-- ---------- ÖN TRİYAJ ---------- -->
+  <main id="triagePage" class="page hidden">
+    <section class="panel">
+      <div class="panel-head">
+        <h2><span data-i18n="cardTriage"></span> <em class="ai-tag" data-i18n="aiTag"></em></h2>
+        <p class="muted" data-i18n="triageSub"></p>
+      </div>
+
+      <textarea id="triageText" class="triage-input" maxlength="1000" rows="5" data-i18n-ph="triagePh"></textarea>
+      <div class="triage-bar">
+        <div class="examples" id="triageExamples"></div>
+        <span class="muted char-count" id="charCount">0 / 1000</span>
+      </div>
+
+      <div class="triage-actions">
+        <p class="disclaimer" data-icon="alert"><span data-i18n="disclaimer"></span></p>
+        <button class="btn btn-purple" id="triageBtn" type="button">
+          <span data-icon="spark"></span><span id="triageBtnText" data-i18n="analyze"></span>
+        </button>
+      </div>
+    </section>
+
+    <section id="triageResult" class="hidden"></section>
+  </main>
+
   <!-- ---------- RANDEVULARIM ---------- -->
   <main id="myPage" class="page hidden">
     <section class="panel">
@@ -253,6 +280,6 @@
 </div>
 <div id="toast" class="toast hidden"></div>
 
-<script src="app.js"></script>
+<script src="app.js?v=2"></script>
 </body>
 </html>
